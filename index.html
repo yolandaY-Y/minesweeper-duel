@@ -11,17 +11,29 @@
   <main>
     <header><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Minesweeper Duel</span></header>
     <section id="lobby">
-      <h1>Minesweeper<br><em>Duel</em></h1>
-      <p class="intro">Two players race to claim cells on one shared minefield.</p>
+      <h1 id="home-title">Minesweeper<br><em>Duel</em></h1>
+      <h1 id="mode-title" hidden></h1>
       <div class="lobby-layout">
         <section class="panel">
-          <div id="setup">
+          <div id="choose-mode">
+            <h2>Choose a mode</h2>
+            <div class="mode-option">
+              <p>Clear a minefield on your own, at your own pace.</p>
+              <button id="solo" class="primary">Play Solo</button>
+            </div>
+            <div class="mode-option">
+              <p>Race a friend for points on one shared board.</p>
+              <button id="duel" class="primary">Play Duel</button>
+            </div>
+          </div>
+          <div id="setup" hidden>
             <h2 id="play-heading">Play together</h2>
             <button id="create" class="primary">Create room</button>
             <form id="join-form">
               <label for="code">Have a room code?</label>
               <div class="input-group"><input id="code" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" required><button class="secondary">Join room</button></div>
             </form>
+            <button id="back" class="secondary">Back to modes</button>
           </div>
           <div id="waiting" hidden>
             <h2 id="wait-title">Your room</h2>
@@ -46,10 +58,10 @@
                   </div>
                   <p id="mine-limit" class="hint">Choose 1–71 mines.</p>
                 </fieldset>
-                <div class="clock-options">
+                <fieldset id="duel-clock-settings" class="clock-options" aria-label="Duel timers">
                   <label>Round time (sec)<input id="round-seconds" type="number" value="90" min="1" max="3600" required></label>
                   <label>Bomb freeze (sec)<input id="penalty-seconds" type="number" value="5" min="1" max="30" required></label>
-                </div>
+                </fieldset>
               </form>
             </div>
             <button id="start" class="primary" hidden>Start duel</button>
@@ -57,29 +69,45 @@
           </div>
           <p id="error" role="alert" hidden></p>
         </section>
-        <div id="lobby-guide"><aside class="rules" id="rulebook">
-          <h2>How to play</h2>
-          <ul>
-            <li><b>Read the clues.</b> Dark, raised squares are still covered. A number counts all mines touching that square, including diagonals. A blank open square touches zero mines. For example, if a 1 touches an exposed 💣, its other neighbors are safe. A flag is a player’s guess.</li>
-            <li><b>Open a safe square.</b> In Open mode, click or tap a covered square. A correct move earns 1 point and marks it in your color. The opening clues and any extra squares revealed automatically are shared and worth 0 points.</li>
-            <li><b>Mark a suspected mine.</b> Right-click a covered square, or select <strong>⚑ Flag</strong> and tap it. Repeat to remove your flag. You can flag as many covered squares as you like. Only you can see your flags, and they earn 0 points.</li>
-            <li><b>Play around a flag.</b> Remove your flag to open that square yourself. Your opponent can still open it. If either player reveals it, including during an automatic opening, the flag disappears.</li>
-            <li><b>Hit a mine.</b> You lose 1 point and freeze. Your opponent can keep playing. The exposed 💣 stays visible. <span id="guide-duration">The default freeze is 5 seconds.</span></li>
-            <li><b>Win the duel.</b> The round ends when every safe square is open or time runs out. The higher score wins. Equal scores tie. On your board, ⚑✓ and ⚑× show which of your remaining flags were right or wrong.</li>
-          </ul>
-          <div class="legend"><span class="covered">Covered</span><span class="clue">Shared clue</span><span class="p1">Player 1</span><span class="p2">Player 2</span></div>
-        </aside></div>
+        <div id="lobby-guide">
+          <aside class="rules" id="general-guide">
+            <h2>How to play</h2>
+            <ul>
+              <li><b>Open a square.</b> In Open mode, click or tap a raised gray square. Each number tells you how many mines touch it, including diagonally.</li>
+              <li><b>Follow the blanks.</b> A blank touches zero mines. Opening one also uncovers nearby safe squares.</li>
+              <li><b>Mark a possible mine.</b> Right-click, or choose Flag and tap. Repeat to remove the flag. Flags are unlimited. To open a flagged square directly, choose Open and tap it.</li>
+            </ul>
+          </aside>
+          <aside class="rules" id="solo-guide" hidden>
+            <h2>Solo rules</h2>
+            <ul>
+              <li>Your first open is safe and starts the clock. Take as long as you like.</li>
+              <li>Open every safe square to win. Opening a mine ends the game immediately.</li>
+              <li>Flags are optional. A blank opens around your flags. In Open mode, tap a flag to uncover that square yourself.</li>
+            </ul>
+          </aside>
+          <aside class="rules" id="duel-guide" hidden>
+            <h2>Duel rules</h2>
+            <ul>
+              <li><b>Claim squares.</b> Both players see the same nine starting clues. Open a safe square first to claim it in your color and earn 1 point. Automatic openings earn 0.</li>
+              <li><b>Avoid mines.</b> Opening a mine costs 1 point and freezes you while your opponent keeps playing. <span id="guide-duration">The default freeze is 5 seconds.</span></li>
+              <li><b>Flag privately.</b> Only you see your flags. They earn 0 points. Either player can open a flagged square, and automatic openings clear flags too.</li>
+              <li><b>Win on points.</b> When time runs out or all safe squares are open, the higher score wins. Equal scores tie. Remaining flags show ✓ for correct and × for incorrect.</li>
+            </ul>
+            <div class="legend"><span class="covered">Covered</span><span class="clue">Shared clue</span><span class="p1">Player 1</span><span class="p2">Player 2</span></div>
+          </aside>
+        </div>
       </div>
     </section>
     <section id="match" hidden>
-      <div class="match-heading"><div><h1>Minefield</h1><p id="seat"></p></div><div class="clock"><span>Time left</span><strong id="clock">1:30</strong></div></div>
+      <div class="match-heading"><div><h1 id="match-title">Duel minefield</h1><p id="seat"></p></div><div class="clock"><span id="clock-label">Time left</span><strong id="clock">1:30</strong></div></div>
       <div class="match-layout">
         <div id="board-shell">
           <div class="board-banner"><p id="feedback" role="status"></p><strong id="board-count"></strong></div>
           <div class="board-scroll"><fieldset id="board-inputs" aria-label="Shared minefield"><div id="board" role="group" aria-label="Minefield squares"></div></fieldset></div>
         </div>
         <div class="match-sidebar"><aside class="panel match-panel">
-          <h2>Scoreboard</h2>
+          <div id="duel-scores"><h2>Scoreboard</h2>
           <table class="scores">
             <thead><tr><td></td><th scope="col"><span class="p1">Player 1</span></th><th scope="col"><span class="p2">Player 2</span></th></tr></thead>
             <tbody>
@@ -87,9 +115,9 @@
               <tr><th scope="row">Bomb hits <small>−1</small></th><td id="bombs1">0</td><td id="bombs2">0</td></tr>
             </tbody>
             <tfoot><tr><th scope="row">Total</th><td id="score1">0</td><td id="score2">0</td></tr></tfoot>
-          </table>
-          <div class="actions" role="group" aria-label="Cell action"><button id="open" aria-pressed="true">Open</button><button id="flag" aria-pressed="false">⚑ Flag</button></div>
-          <p class="hint">Right-click to place or remove a private flag. Only you can see it.</p>
+          </table></div>
+          <div class="actions" role="group" aria-label="Cell action"><button id="open" aria-pressed="true">Open</button><button id="flag" aria-pressed="false"><span class="pixel-flag" aria-hidden="true"></span> Flag</button></div>
+          <p class="hint">Right-click to toggle a flag. Choose Open to uncover a flagged square.</p>
           <div id="rematch-settings"></div>
           <button id="again" class="primary" hidden>Play again</button>
           <button id="leave" class="secondary">Leave room</button>

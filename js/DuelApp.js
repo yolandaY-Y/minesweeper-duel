@@ -1,3 +1,4 @@
+import SoloRound from './SoloRound.js';
 import DuelRound, { DEFAULT_PENALTY_SECONDS, PRESETS, maxMineCount } from './DuelRound.js';
 import PeerRoom from './PeerRoom.js';
 import TabRoom from './TabRoom.js';
@@ -6,6 +7,7 @@ import Tile from './Tile.js';
 const byId = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const practiceMode = params.get('practice') === '1';
+let mode = 'home';
 let room, round, view, tiles = [], host = false, connected = false;
 let selected = 'open', receivedAt = 0, timeout, ticker;
 let revision = 0;
@@ -29,12 +31,37 @@ function reset(message = '') {
   byId('board').replaceChildren();
   byId('lobby-settings').append(byId('round-settings'));
   byId('round-settings').hidden = true;
-  byId('lobby-guide').append(byId('rulebook'));
+  byId('lobby-guide').append(byId('solo-guide'), byId('duel-guide'));
   byId('guide-duration').textContent = 'The default freeze is ' + DEFAULT_PENALTY_SECONDS + ' seconds.';
   byId('match').hidden = byId('waiting').hidden = true;
-  byId('lobby').hidden = byId('setup').hidden = false;
+  byId('lobby').hidden = false;
+  selectMode('home');
   byId('error').textContent = message;
   byId('error').hidden = !message;
+}
+
+function selectMode(next) {
+  mode = next;
+  const home = mode === 'home';
+  const solo = mode === 'solo';
+  byId('choose-mode').hidden = byId('home-title').hidden = !home;
+  byId('mode-title').hidden = home;
+  byId('mode-title').textContent = solo ? 'Classic Solo' : 'Multiplayer Duel';
+  byId('general-guide').hidden = !home;
+  byId('solo-guide').hidden = !solo;
+  byId('duel-guide').hidden = byId('setup').hidden = mode !== 'duel';
+  byId('waiting').hidden = !solo;
+  byId('duel-clock-settings').hidden = byId('duel-clock-settings').disabled = solo;
+  byId('cancel').textContent = solo ? 'Back to modes' : 'Leave room';
+  byId('start').textContent = solo ? 'Start solo' : 'Start duel';
+  if (!home) byId('error').hidden = true;
+  if (solo) {
+    byId('wait-title').textContent = 'Choose your board';
+    byId('room-code').textContent = byId('wait-detail').textContent = '';
+    byId('code-label').hidden = byId('practice').hidden = true;
+    byId('round-settings').hidden = byId('start').hidden = false;
+  }
+  if (byId('difficulty').value === 'custom') updateMineLimit();
 }
 
 const errors = {
@@ -46,6 +73,7 @@ const errors = {
 
 async function enter(isHost, code) {
   reset();
+  selectMode('duel');
   host = isHost;
   byId('waiting').hidden = false;
   byId('setup').hidden = true;
@@ -104,25 +132,34 @@ function updateMineLimit() {
     byId('mine-limit').textContent = 'Choose 5–30 columns and 5–24 rows.';
     return;
   }
-  const max = maxMineCount(width, height);
+  const max = mode === 'solo' ? width * height - 1 : maxMineCount(width, height);
   byId('board-mines').max = String(max);
   byId('mine-limit').textContent = 'Choose 1–' + max + ' mines.';
 }
 
 function startRound() {
-  if (!host || !connected || (round && !round.result)) return;
+  if (mode === 'duel' && (!host || !connected)) return;
+  if (round && !round.result) return;
   if (!byId('round-settings').reportValidity()) return;
   const board = PRESETS[byId('difficulty').value] ?? {
     width: byId('board-width').valueAsNumber,
     height: byId('board-height').valueAsNumber,
     mineCount: byId('board-mines').valueAsNumber,
   };
+  byId('round-settings').hidden = true;
+  if (mode === 'solo') {
+    round = new SoloRound(board);
+    view = round;
+    startBoard(view);
+    renderBoard(view);
+    updateClock();
+    return;
+  }
   round = new DuelRound(++revision, performance.now(), {
     ...board,
     timeSeconds: byId('round-seconds').valueAsNumber,
     penaltySeconds: byId('penalty-seconds').valueAsNumber,
   });
-  byId('round-settings').hidden = true;
   publish();
 }
 
@@ -137,14 +174,22 @@ function applyMove(player, request) {
 }
 
 function clickCell(index, action) {
-  if (!view || view.result || view.board[index] || penaltyLeft(host ? 0 : 1) > 0) return;
+  if (!view || view.result || view.board[index]) return;
+  if (mode === 'duel' && penaltyLeft(host ? 0 : 1) > 0) return;
   if (action === 'flag') {
     if (!privateFlags.delete(index)) privateFlags.add(index);
     renderCell(tiles[index], null, index, view);
     updateClock();
     return;
   }
-  if (privateFlags.has(index)) return;
+  if (mode === 'solo') {
+    if (round.open(index, performance.now(), privateFlags)) {
+      renderBoard(view);
+      updateClock();
+      if (view.result) finishRound();
+    }
+    return;
+  }
   const request = { type: 'move', round: view.round, index, action };
   if (host) applyMove(0, request);
   else room.send(request);
@@ -159,12 +204,18 @@ function startBoard(state) {
   privateFlags.clear();
   byId('lobby').hidden = true;
   byId('match').hidden = false;
-  byId('seat').textContent = 'You are Player ' + (host ? '1' : '2') + ' · ' +
-    state.width + ' × ' + state.height + ' · ' + state.mineCount + ' mines · ' + state.timeSeconds + 's';
+  const solo = mode === 'solo';
+  const size = state.width + ' × ' + state.height + ' · ' + state.mineCount + ' mines';
+  byId('match-title').textContent = solo ? 'Classic Solo' : 'Duel minefield';
+  byId('seat').textContent = solo ? size : 'You are Player ' + (host ? '1' : '2') + ' · ' + size + ' · ' + state.timeSeconds + 's';
+  byId('board-inputs').setAttribute('aria-label', solo ? 'Solo minefield' : 'Shared minefield');
+  byId('clock-label').textContent = solo ? 'Elapsed time' : 'Time left';
+  byId('duel-scores').hidden = solo;
+  byId('leave').textContent = solo ? 'Back to modes' : 'Leave room';
   byId('board').style.setProperty('--columns', state.width);
   byId('board-shell').classList.toggle('wide-board', state.width >= 15);
   byId('again').hidden = true;
-  byId('match-guide').append(byId('rulebook'));
+  byId('match-guide').append(byId(mode + '-guide'));
   markedTile = null;
   setAction('open');
   tiles = Array.from({ length: state.width * state.height }, (_, i) => {
@@ -191,33 +242,42 @@ function renderCell(tile, cell, index, state) {
   // Unchanged cells can be skipped on both clients, including the host whose board is mutable.
   const flagged = privateFlags.has(index);
   const correct = flagged && state.result ? state.mineLocations.includes(index) : undefined;
+  const hiddenMine = mode === 'solo' && state.result === 'mine' && !cell && state.values[index] === -1;
   const stamp = flagged ? 'flag-' + (correct ?? 'pending')
-    : cell ? 'open-' + cell.value + '-' + cell.owner : 'covered';
+    : cell ? 'open-' + cell.value + '-' + cell.owner : hiddenMine ? 'mine' : 'covered';
   button.disabled = Boolean(state.result || cell);
   if (button.dataset.state === stamp) return;
   button.dataset.state = stamp;
-  delete button.dataset.owner;
-  button.classList.remove('wrong-flag');
-  if (tile.isFlagged) tile.unflagTile();
+  button.replaceChildren();
+  button.classList.toggle('flagged', flagged);
   let description = 'covered';
   if (flagged) {
-    tile.flagTile(!host);
-    button.dataset.owner = host ? 0 : 1;
+    const flag = document.createElement('span');
+    flag.className = 'pixel-flag';
+    flag.setAttribute('aria-hidden', 'true');
+    button.append(flag);
     description = 'your flag';
-    if (correct === undefined) {
-      button.textContent = '⚑';
-    } else {
-      button.textContent = correct ? '⚑✓' : '⚑×';
-      button.classList.toggle('wrong-flag', !correct);
+    if (correct !== undefined) {
+      const verdict = document.createElement('small');
+      verdict.className = 'flag-verdict';
+      verdict.textContent = correct ? '✓' : '×';
+      button.append(verdict);
       description += correct ? ', correct' : ', incorrect';
     }
-  } else if (cell) {
-    tile.isMine = cell.value === -1;
-    tile.revealTile(cell.value);
-    if (cell.owner !== null) button.dataset.owner = cell.owner;
-    const owner = cell.owner === null ? 'shared clue' : 'Player ' + (cell.owner + 1);
-    if (tile.isMine) description = 'exploded mine, ' + owner + ' lost one point';
-    else description = cell.value + (cell.value === 1 ? ' neighboring mine, ' : ' neighboring mines, ') + owner;
+  } else if (cell || hiddenMine) {
+    const value = hiddenMine ? -1 : cell.value;
+    tile.isMine = value === -1;
+    tile.revealTile(value);
+    description = tile.isMine ? 'mine' : value + (value === 1 ? ' neighboring mine' : ' neighboring mines');
+    if (mode === 'duel') {
+      if (cell.owner !== null) {
+        button.dataset.owner = cell.owner;
+        description += ', Player ' + (cell.owner + 1) + (tile.isMine ? ' lost one point' : '');
+      } else description += ', shared clue';
+    } else if (cell && tile.isMine) {
+      button.classList.add('tripped');
+      description = 'mine you opened';
+    }
   }
   button.setAttribute('aria-label', cellLabel(index, state.width) + ', ' + description);
 }
@@ -240,18 +300,25 @@ function showState(next) {
     byId('bombs' + seat).textContent = stats.bombs;
     byId('score' + seat).textContent = next.scores[i];
   });
-  for (const [i, cell] of next.board.entries()) {
-    if (cell) privateFlags.delete(i);
-    renderCell(tiles[i], cell, i, next);
-  }
+  renderBoard(next);
   updateClock();
-  if (next.result) {
-    clearInterval(ticker);
-    byId('again').hidden = !host;
-    if (host) {
-      byId('rematch-settings').append(byId('round-settings'));
-      byId('round-settings').hidden = false;
-    }
+  if (next.result) finishRound();
+}
+
+function renderBoard(state) {
+  for (const [i, cell] of state.board.entries()) {
+    if (cell) privateFlags.delete(i);
+    renderCell(tiles[i], cell, i, state);
+  }
+}
+
+function finishRound() {
+  clearInterval(ticker);
+  const canRestart = mode === 'solo' || host;
+  byId('again').hidden = !canRestart;
+  if (canRestart) {
+    byId('rematch-settings').append(byId('round-settings'));
+    byId('round-settings').hidden = false;
   }
 }
 
@@ -263,12 +330,29 @@ function penaltyLeft(player) {
   return remaining(view.penalties[player]?.timeLeft ?? 0);
 }
 
+function formatTime(seconds) {
+  return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+}
+
 function updateClock() {
   if (!view) return;
+  if (mode === 'solo') {
+    const elapsed = formatTime(Math.floor(round.elapsed(performance.now()) / 1000));
+    byId('clock').textContent = elapsed;
+    let status = selected === 'flag' ? 'Place or remove a flag' : 'Open a safe square';
+    if (selected === 'open' && round.startedAt === null) status = 'Open any square to start';
+    if (round.result === 'mine') status = 'You hit a mine. Game over.';
+    if (round.result === 'cleared') status = 'Board cleared in ' + elapsed + '!';
+    if (byId('feedback').textContent !== status) byId('feedback').textContent = status;
+    byId('board-shell').dataset.state = round.result ? 'finished' : 'ready';
+    byId('board-inputs').disabled = Boolean(round.result);
+    byId('board-count').textContent = '';
+    return;
+  }
   if (host && round?.expire(performance.now())) { publish(); return; }
   const ms = view.result ? view.timeLeft : remaining(view.timeLeft);
   const seconds = Math.ceil(ms / 1000);
-  byId('clock').textContent = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+  byId('clock').textContent = formatTime(seconds);
   const player = host ? 0 : 1;
   const cooldown = Math.ceil(penaltyLeft(player) / 1000);
   const mistake = view.penalties[player];
@@ -301,6 +385,9 @@ function updateClock() {
   if (counter.textContent !== count) counter.textContent = count;
 }
 
+for (const name of ['solo', 'duel']) byId(name).addEventListener('click', () => selectMode(name));
+byId('back').addEventListener('click', () => reset());
+if (practiceMode || /^\d{6}$/.test(suggestedCode ?? '')) selectMode('duel');
 byId('create').addEventListener('click', () => {
   const [random] = crypto.getRandomValues(new Uint32Array(1));
   enter(true, String(100000 + random % 900000));
@@ -321,5 +408,5 @@ byId('round-settings').addEventListener('submit', event => event.preventDefault(
 byId('start').addEventListener('click', startRound);
 byId('again').addEventListener('click', startRound);
 for (const id of ['cancel', 'leave']) byId(id).addEventListener('click', () => reset());
-for (const action of ['open', 'flag']) byId(action).addEventListener('click', () => setAction(action));
+for (const action of ['open', 'flag']) byId(action).addEventListener('click', () => { setAction(action); updateClock(); });
 window.addEventListener('pagehide', () => reset());

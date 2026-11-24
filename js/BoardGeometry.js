@@ -19,3 +19,35 @@ export function chooseMines(size, count, safe) {
   }
   return candidates.slice(0, count);
 }
+
+export function wholeNumber(value, min, max, name) {
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new RangeError(name + ' must be a whole number from ' + min + ' to ' + max + '.');
+  }
+  return value;
+}
+
+export function buildField(width, height, mineCount, safe) {
+  const size = width * height;
+  const mines = new Set(chooseMines(size, mineCount, safe));
+  return Array.from({ length: size }, (_, index) => mines.has(index) ? -1 :
+    neighbors(index, width, height).filter(next => mines.has(next)).length);
+}
+
+// The deliberate open can claim a square. Squares reached from a blank are neutral.
+export function openRegion(index, width, height, values, board, owner, flags) {
+  const queue = [index];
+  board[index] = { value: values[index], owner };
+  let opened = 1;
+  while (queue.length) {
+    const current = queue.pop();
+    if (values[current] !== 0) continue;
+    for (const next of neighbors(current, width, height)) {
+      if (board[next] || flags?.has(next)) continue;
+      board[next] = { value: values[next], owner: null };
+      opened++;
+      if (values[next] === 0) queue.push(next);
+    }
+  }
+  return opened;
+}

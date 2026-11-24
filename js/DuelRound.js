@@ -1,4 +1,4 @@
-import { chooseMines, neighbors } from './BoardGeometry.js';
+import { buildField, neighbors, openRegion, wholeNumber } from './BoardGeometry.js';
 
 export const PRESETS = {
   easy: { width: 8, height: 8, mineCount: 6 },
@@ -8,13 +8,6 @@ export const PRESETS = {
 
 export const DEFAULT_PENALTY_SECONDS = 5;
 export const DEFAULT_TIME_SECONDS = 90;
-
-function wholeNumber(value, min, max, name) {
-  if (!Number.isInteger(value) || value < min || value > max) {
-    throw new RangeError(name + ' must be a whole number from ' + min + ' to ' + max + '.');
-  }
-  return value;
-}
 
 // Leave nine opening clues and at least one safe square to play.
 export function maxMineCount(width, height) {
@@ -39,18 +32,10 @@ export default class DuelRound {
 
     const center = Math.floor(this.height / 2) * this.width + Math.floor(this.width / 2);
     const opening = new Set([center, ...neighbors(center, this.width, this.height)]);
-    const mines = new Set(chooseMines(size, this.mineCount, opening));
-    this.values = Array.from({ length: size }, (_, i) =>
-      mines.has(i) ? -1 : neighbors(i, this.width, this.height).filter(n => mines.has(n)).length,
-    );
-    // Only openings belong to the shared board. Flags live in each player's browser.
+    this.values = buildField(this.width, this.height, this.mineCount, opening);
     this.board = Array(size).fill(null);
-    for (const index of opening) this.revealSafe(index, null);
-  }
-
-  revealSafe(index, owner) {
-    this.board[index] = { value: this.values[index], owner };
-    this.safeLeft--;
+    for (const index of opening) this.board[index] = { value: this.values[index], owner: null };
+    this.safeLeft -= opening.size;
   }
 
   expire(now) {
@@ -72,15 +57,7 @@ export default class DuelRound {
       return true;
     }
 
-    this.revealSafe(index, player);
-    const queue = this.values[index] === 0 ? [index] : [];
-    while (queue.length) {
-      for (const next of neighbors(queue.pop(), this.width, this.height)) {
-        if (this.board[next]) continue;
-        this.revealSafe(next, null);
-        if (this.values[next] === 0) queue.push(next);
-      }
-    }
+    this.safeLeft -= openRegion(index, this.width, this.height, this.values, this.board, player);
     if (this.safeLeft === 0) this.result = 'cleared';
     return true;
   }
