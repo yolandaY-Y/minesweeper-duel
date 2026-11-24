@@ -139,10 +139,7 @@ function applyMove(player, request) {
 function clickCell(index, action) {
   if (!view || view.result || view.board[index] || penaltyLeft(host ? 0 : 1) > 0) return;
   if (action === 'flag') {
-    if (!privateFlags.delete(index)) {
-      if (privateFlags.size >= view.mineCount) return;
-      privateFlags.add(index);
-    }
+    if (!privateFlags.delete(index)) privateFlags.add(index);
     renderCell(tiles[index], null, index, view);
     updateClock();
     return;
@@ -277,10 +274,9 @@ function updateClock() {
   const mistake = view.penalties[player];
   let state = 'ready';
   let status = selected === 'flag' ? 'Place or remove your flag' : 'Open a safe square';
-  let count = 'Your flags left: ' + (view.mineCount - privateFlags.size);
+  let count = '';
   if (view.result) {
     state = 'finished';
-    count = '';
     const [a, b] = view.scores;
     const winner = a === b ? 'Tie game.' : 'Player ' + (a > b ? '1' : '2') + ' wins!';
     status = (view.result === 'time' ? 'Time is up. ' : 'Board complete. ') + winner;
