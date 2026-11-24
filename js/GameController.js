@@ -1,3 +1,4 @@
+import { chooseMines, neighbors } from './BoardGeometry.js';
 import Tile from './Tile.js';
 import ScoreManager from './ScoreManager.js';
 
@@ -172,51 +173,14 @@ export default class GameController {
   }
 
   generateMinePositions(safeY, safeX) {
-    // Empty array of positions
-    const positions = [];
-    // Fill array with all x and y coordinates
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
-        // Skip adding the safe coordinates
-        if (y === safeY && x === safeX) continue;
-        positions.push({ y, x });
-      }
-    }
-
-    // Perform the Fisher-Yates shuffle algorithm to shuffle all the indexes
-    // This ensures a linear time complexity
-    for (
-      let swapFromIndex = 0;
-      swapFromIndex < positions.length;
-      swapFromIndex++
-    ) {
-      const swapToIndex = Math.floor(Math.random() * positions.length);
-      const temp = positions[swapFromIndex];
-      positions[swapFromIndex] = positions[swapToIndex];
-      positions[swapToIndex] = temp;
-    }
-
-    return positions.slice(0, this.mineCount);
+    const safe = new Set([safeY * this.width + safeX]);
+    return chooseMines(this.width * this.height, this.mineCount, safe)
+      .map(i => ({ y: Math.floor(i / this.width), x: i % this.width }));
   }
 
   getAdjacentCoordinates(y, x) {
-    // Create empty array for adjacent coordinates
-    const adjacentCoordinates = [];
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        // Iterate over all adjacent x and y positions
-        if (dy === 0 && dx === 0) continue;
-
-        const newY = y + dy;
-        const newX = x + dx;
-
-        // If the new coordinates are in bounds, add the coordinate as adjacent
-        if (newY >= 0 && newY < this.height && newX >= 0 && newX < this.width) {
-          adjacentCoordinates.push({ y: newY, x: newX });
-        }
-      }
-    }
-    return adjacentCoordinates;
+    return neighbors(y * this.width + x, this.width, this.height)
+      .map(i => ({ y: Math.floor(i / this.width), x: i % this.width }));
   }
 
   revealTile(y, x, isBroadcasted, isForced) {
