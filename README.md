@@ -2,7 +2,7 @@
 
 Two players race on a shared minefield. A deliberately opened safe square earns one point. Opening a bomb costs one point, exposes the bomb to both players and freezes only the player who hit it. Scores can go below zero. The neutral starting area and automatic reveals earn no points.
 
-Right-click, or select Flag and tap, to place or remove a private flag. Each player has one flag per mine. Flags stay in the browser that placed them and are always worth zero points. A flag prevents its owner from directly opening the square. The opponent can open it, and either player's automatic reveals can uncover it. Revealing a flagged square returns the flag to its owner's supply.
+Right-click, or select Flag and tap, to place or remove a private flag. You can flag as many covered squares as you like. Flags stay in the browser that placed them and are always worth zero points. A flag prevents its owner from directly opening the square. The opponent can open it, and either player's automatic reveals can uncover it. Revealing a flagged square clears its flag.
 
 The host can choose Easy (8×8, 6 mines), Standard (9×9, 12 mines), Hard (16×16, 40 mines), or set the columns (5–30), rows (5–24), and mine count for a custom board. Nine starting clues and at least one playable safe square must fit. Round time can be 1–3,600 seconds (default 90) and a bomb freeze can be 1–30 seconds (default 5). Settings can change before a rematch.
 
