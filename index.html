@@ -1,58 +1,103 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MineDuo: Co-op Minesweeper | Ethan Hawksley</title>
-    <meta
-      name="description"
-      content="An online Minesweeper game by Ethan Hawksley, featuring customisable single-player and co-op multiplayer."
-    />
-    <meta name="author" content="Ethan Hawksley" />
-    <link href="style.css" rel="stylesheet" />
-    <link rel="canonical" href="https://mineduo.hawksley.dev/" />
-    <meta name="color-scheme" content="light dark" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://mineduo.hawksley.dev/" />
-    <meta
-      property="og:title"
-      content="MineDuo: Co-op Minesweeper | Ethan Hawksley"
-    />
-    <meta
-      property="og:description"
-      content="An online Minesweeper game by Ethan Hawksley, featuring customisable single-player and co-op multiplayer."
-    />
-    <meta property="og:site_name" content="Ethan Hawksley" />
-    <meta property="og:locale" content="en_GB" />
-    <meta name="twitter:creator" content="@Ethan_Hawksley" />
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "@id": "https://mineduo.hawksley.dev/#app",
-        "url": "https://mineduo.hawksley.dev/",
-        "name": "Mineduo",
-        "description": "A real-time cooperative Minesweeper port. Built with vanilla JavaScript and PeerJS to enable low-latency, peer-to-peer (P2P) multiplayer without a backend server.",
-        "applicationCategory": "GameApplication",
-        "creator": {
-          "@type": "Person",
-          "@id": "https://hawksley.dev/#person",
-          "name": "Ethan Hawksley",
-          "url": "https://hawksley.dev/"
-        },
-        "sameAs": ["https://github.com/ethanhawksley/mineduo"]
-      }
-    </script>
-  </head>
-  <body>
-    <h1>Mineduo</h1>
-    <div id="content"></div>
-    <p>Created by <a href="https://hawksley.dev">Ethan Hawksley</a></p>
-    <script type="module">
-      import State from './js/State.js';
-
-      // Initialise the state to run the game
-      const state = new State();
-    </script>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f1e8">
+  <title>Minesweeper Duel</title>
+  <link rel="stylesheet" href="duel.css">
+</head>
+<body>
+  <main>
+    <header><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Minesweeper Duel</span></header>
+    <section id="lobby">
+      <h1>Minesweeper<br><em>Duel</em></h1>
+      <p class="intro">Two players race to claim cells on one shared minefield.</p>
+      <div class="lobby-layout">
+        <section class="panel">
+          <div id="setup">
+            <h2 id="play-heading">Play together</h2>
+            <button id="create" class="primary">Create room</button>
+            <form id="join-form">
+              <label for="code">Have a room code?</label>
+              <div class="input-group"><input id="code" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" required><button class="secondary">Join room</button></div>
+            </form>
+          </div>
+          <div id="waiting" hidden>
+            <h2 id="wait-title">Your room</h2>
+            <p id="code-label" hidden>Room code</p><strong id="room-code"></strong>
+            <p id="wait-detail" role="status"></p>
+            <a id="practice" href="./?practice=1" target="_blank" rel="noopener" hidden>Open player 2 in a new tab ↗</a>
+            <div id="lobby-settings">
+              <form id="round-settings" hidden>
+                <label for="difficulty">Board difficulty</label>
+                <select id="difficulty">
+                  <option value="easy">Easy · 8 × 8 · 6 mines</option>
+                  <option value="standard" selected>Standard · 9 × 9 · 12 mines</option>
+                  <option value="hard">Hard · 16 × 16 · 40 mines</option>
+                  <option value="custom">Custom board</option>
+                </select>
+                <fieldset id="custom-board" hidden disabled>
+                  <legend>Custom board</legend>
+                  <div class="board-options">
+                    <label>Columns<input id="board-width" type="number" value="9" min="5" max="30" required></label>
+                    <label>Rows<input id="board-height" type="number" value="9" min="5" max="24" required></label>
+                    <label>Mines<input id="board-mines" type="number" value="12" min="1" max="71" required></label>
+                  </div>
+                  <p id="mine-limit" class="hint">Choose 1–71 mines.</p>
+                </fieldset>
+                <div class="clock-options">
+                  <label>Round time (sec)<input id="round-seconds" type="number" value="90" min="1" max="3600" required></label>
+                  <label>Bomb freeze (sec)<input id="penalty-seconds" type="number" value="5" min="1" max="30" required></label>
+                </div>
+              </form>
+            </div>
+            <button id="start" class="primary" hidden>Start duel</button>
+            <button id="cancel" class="secondary">Leave room</button>
+          </div>
+          <p id="error" role="alert" hidden></p>
+        </section>
+        <div id="lobby-guide"><aside class="rules" id="rulebook">
+          <h2>How to play</h2>
+          <ul>
+            <li><b>Read the clues.</b> Dark, raised squares are still covered. A number counts all mines touching that square, including diagonals. A blank open square touches zero mines. For example, if a 1 touches an exposed 💣, its other neighbors are safe. A flag is a player’s guess.</li>
+            <li><b>Open a safe square.</b> In Open mode, click or tap a covered square. A correct move earns 1 point and marks it in your color. The opening clues and any extra squares revealed automatically are shared and worth 0 points.</li>
+            <li><b>Mark a suspected mine.</b> Right-click, or select <strong>⚑ Flag</strong> and tap. Repeat to remove your flag. Only you can see your flags. Each player gets one flag per mine. Flags always earn 0 points.</li>
+            <li><b>Play around a flag.</b> Remove your flag to open that square yourself. Your opponent can still open it. If either player reveals it, including during an automatic opening, the flag disappears and you can use it again.</li>
+            <li><b>Hit a mine.</b> You lose 1 point and freeze. Your opponent can keep playing. The exposed 💣 stays visible. <span id="guide-duration">The default freeze is 5 seconds.</span></li>
+            <li><b>Win the duel.</b> The round ends when every safe square is open or time runs out. The higher score wins. Equal scores tie. On your board, ⚑✓ and ⚑× show which of your remaining flags were right or wrong.</li>
+          </ul>
+          <div class="legend"><span class="covered">Covered</span><span class="clue">Shared clue</span><span class="p1">Player 1</span><span class="p2">Player 2</span></div>
+        </aside></div>
+      </div>
+    </section>
+    <section id="match" hidden>
+      <div class="match-heading"><div><h1>Minefield</h1><p id="seat"></p></div><div class="clock"><span>Time left</span><strong id="clock">1:30</strong></div></div>
+      <div class="match-layout">
+        <div id="board-shell">
+          <div class="board-banner"><p id="feedback" role="status"></p><strong id="board-count"></strong></div>
+          <div class="board-scroll"><fieldset id="board-inputs" aria-label="Shared minefield"><div id="board" role="group" aria-label="Minefield squares"></div></fieldset></div>
+        </div>
+        <div class="match-sidebar"><aside class="panel match-panel">
+          <h2>Scoreboard</h2>
+          <table class="scores">
+            <thead><tr><td></td><th scope="col"><span class="p1">Player 1</span></th><th scope="col"><span class="p2">Player 2</span></th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Safe opens <small>+1</small></th><td id="safe1">0</td><td id="safe2">0</td></tr>
+              <tr><th scope="row">Bomb hits <small>−1</small></th><td id="bombs1">0</td><td id="bombs2">0</td></tr>
+            </tbody>
+            <tfoot><tr><th scope="row">Total</th><td id="score1">0</td><td id="score2">0</td></tr></tfoot>
+          </table>
+          <div class="actions" role="group" aria-label="Cell action"><button id="open" aria-pressed="true">Open</button><button id="flag" aria-pressed="false">⚑ Flag</button></div>
+          <p class="hint">Right-click to place or remove a private flag. Only you can see it.</p>
+          <div id="rematch-settings"></div>
+          <button id="again" class="primary" hidden>Play again</button>
+          <button id="leave" class="secondary">Leave room</button>
+        </aside><div id="match-guide"></div></div>
+      </div>
+    </section>
+    <footer>Adapted from <a href="https://github.com/ethanhawksley/mineduo">MineDuo by Ethan Hawksley</a><a class="classic" href="classic.html">Original game ↗</a></footer>
+  </main>
+  <script type="module" src="js/DuelApp.js"></script>
+</body>
 </html>

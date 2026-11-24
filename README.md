@@ -1,40 +1,21 @@
-# MineDuo
+# Minesweeper Duel
 
-## About
+Two players race on a shared minefield. A deliberately opened safe square earns one point. Opening a bomb costs one point, exposes the bomb to both players and freezes only the player who hit it. Scores can go below zero. The neutral starting area and automatic reveals earn no points.
 
-A port of Minesweeper so it can be played either by one person, or two people using a peer-to-peer connection.
+Right-click, or select Flag and tap, to place or remove a private flag. Each player has one flag per mine. Flags stay in the browser that placed them and are always worth zero points. A flag prevents its owner from directly opening the square. The opponent can open it, and either player's automatic reveals can uncover it. Revealing a flagged square returns the flag to its owner's supply.
 
-## Features
+The host can choose Easy (8×8, 6 mines), Standard (9×9, 12 mines), Hard (16×16, 40 mines), or set the columns (5–30), rows (5–24), and mine count for a custom board. Nine starting clues and at least one playable safe square must fit. Round time can be 1–3,600 seconds (default 90) and a bomb freeze can be 1–30 seconds (default 5). Settings can change before a rematch.
 
-1. Two different modes to play
-2. Three different difficulties and a custom difficulty setting
-3. Global wireless multiplayer through WebRTC
-4. Fully featured singleplayer
-5. Recursive revealing of safe tiles
-6. Flagging of suspicious tiles
-7. Optional sound effects to go with actions
-8. Light and dark mode support
+Play ends when all safe squares are open or the clock expires. The higher total wins and equal totals tie. Each player sees the accuracy of their own remaining flags when the round ends.
 
-## Usage
+## Play
 
-1. Clone the repository:
-   ```shell
-   git clone https://github.com/ethanhawksley/mineduo
-   cd online-minesweeper
-   ```
-2. Start a local development server
-   ```shell
-   npx serve
-   ```
-3. Visit the website in your browser. This is typically hosted at http://localhost:3000 but your machine may vary.
+For two devices, open the same hosted HTTPS game URL on both. One player selects **Create room** and shares the six-digit code. The other enters the code and selects **Join room**. The host then selects **Start duel**. Online rooms use PeerJS Cloud for signaling.
 
-## Hosting
+To practice in two tabs, append `?practice=1` to the game URL. For example, run `python3 -m http.server 8000` in this directory and open `http://localhost:8000/?practice=1`. Create a room and select **Open player 2 in a new tab**. Join in that tab, then start in the first. Practice works locally without the signaling service. Run `node --test` to check the duel rules and room behavior.
 
-1. Fork this repository on GitHub
-2. Navigate to the repository settings, and to the Pages section
-3. Set to deploy from your `main` branch, and the `/` directory. Wait for GitHub to finish building the project.
-4. Visit your newly deployed site!
+Left-click to open and right-click to flag. The **Flag** button also works with a trackpad, touchscreen, or keyboard. Player 1 hosts the board and settles moves in arrival order. Both players see identical claims, scores and results. Player 1 can start a rematch.
 
-## Author
+## Source
 
-[Ethan Hawksley](https://hawksley.dev)
+Adapted from [MineDuo by Ethan Hawksley](https://github.com/ethanhawksley/mineduo) under the included MIT license. The original game is available at `classic.html`.
